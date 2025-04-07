@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Recherche Doublons Excel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <ul class="navbar-nav d-flex flex-row">
+              
+
+                <li class="nav-item mx-5">
+                    <a class="nav-link text-dark" href="https://www.linkedin.com/in/abdel-rahmane-herhira-a8094417a/" target="_blank" aria-label="LinkedIn" title="LinkedIn">
+                        <i class="fab fa-linkedin" style="font-size: 30px; color: #0077B5;"></i>
+                        Linkedin : Herhira abdel rahmane
+                    </a>
+                </li>
+
+                <li class="nav-item mx-5">
+                     <h1> <span class="navbar-text text-dark">  </span> </h1> 
+                </li>
+
+                <li class="nav-item mx-5">
+                    <a class="nav-link" href="https://github.com/herhira-abd/vba_module" target="_blank" >
+                        <i class="fab fa-github" style="font-size: 30px; color: #0077B5;"></i>
+                        Githib rep
+                    </a>
+              
+                </li>
+            </ul>
+            
+               
+
+        </div>    
+
+
+
+          
+    </nav>
+
+<div class="container py-5 mt-5">
+  <h2 class="mb-4">🔍 Analyse de similarité</h2>
+
+  <!-- Input Excel -->
+  <input type="file" class="form-control mb-3" id="excelFile" accept=".xlsx, .xls" />
+
+  <!-- Input Range -->
+  <div class="mb-3">
+    <label for="threshold" class="form-label">Seuil de similarité : <strong id="thresholdValue">75%</strong></label>
+    <input type="range" class="form-range" min="0" max="1" step="0.01" id="threshold" value="0.75" 
+           oninput="updateThresholdDisplay(this.value)">
+  </div>
+
+  <button class="btn btn-primary mb-4" onclick="analyze()">Analyser</button>
+
+  <table class="table table-bordered table-hover d-none" id="resultTable">
+    <thead class="table-dark">
+      <tr>
+        <th>Ligne</th>
+        <th>Valeur</th>
+        <th>Valeur similaire</th>
+        <th>Ligne similaire</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  function updateThresholdDisplay(value) {
+    document.getElementById('thresholdValue').textContent = `${Math.round(value * 100)}%`;
+  }
+
+  function getBigrams(str) {
+    let s = str.toLowerCase().replace(/\s/g, '');
+    let bigrams = [];
+    for (let i = 0; i < s.length - 1; i++) {
+      bigrams.push(s.slice(i, i + 2));
+    }
+    return bigrams;
+  }
+
+  function diceCoefficient(str1, str2) {
+    const pairs1 = getBigrams(str1);
+    const pairs2 = getBigrams(str2);
+    let intersection = 0;
+    const tempPairs2 = [...pairs2];
+
+    pairs1.forEach(pair1 => {
+      const index = tempPairs2.indexOf(pair1);
+      if (index > -1) {
+        intersection++;
+        tempPairs2.splice(index, 1);
+      }
+    });
+
+    return (2.0 * intersection) / (pairs1.length + pairs2.length);
+  }
+
+  function analyze() {
+    const threshold = parseFloat(document.getElementById('threshold').value);
+    const fileInput = document.getElementById('excelFile');
+    const file = fileInput.files[0];
+    if (!file) return alert("Veuillez sélectionner un fichier Excel.");
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+      const firstColumn = json.map(row => row[0]).filter(Boolean);
+      const tbody = document.querySelector("#resultTable tbody");
+      tbody.innerHTML = "";
+
+      for (let i = 0; i < firstColumn.length; i++) {
+        for (let j = 0; j < firstColumn.length; j++) {
+          if (i !== j) {
+            const val1 = firstColumn[i];
+            const val2 = firstColumn[j];
+            const score = diceCoefficient(val1, val2);
+            if (score >= threshold) {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${val1}</td>
+                <td>${val2}</td>
+                <td>${j + 1}</td>
+                <td>${(score * 100).toFixed(2)}%</td>
+              `;
+              tbody.appendChild(tr);
+            }
+          }
+        }
+      }
+
+      document.getElementById('resultTable').classList.remove("d-none");
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+</script>
+
+</body>
+</html>
