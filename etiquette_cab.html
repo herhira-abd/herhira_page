@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Générateur d’étiquettes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    .page {
+      page-break-after: always;
+      display: grid;
+      justify-content: start;
+      align-content: start;
+      gap: 2mm;
+    }
+    .etiquette {
+      border: 1px solid #000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      overflow: hidden;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+    svg {
+      width: 100%;
+      height: auto;
+    }
+  
+
+    @media print {
+      body {
+        margin: 0;
+        -webkit-print-color-adjust: exact;
+      }
+      .page {
+        break-after: page;
+        display: grid !important;
+      }
+      .etiquette {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body class="p-4">
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <ul class="navbar-nav d-flex flex-row">
+              
+
+                <li class="nav-item mx-5">
+                    <a class="nav-link text-dark" href="https://www.linkedin.com/in/abdel-rahmane-herhira-a8094417a/" target="_blank" aria-label="LinkedIn" title="LinkedIn">
+                        <i class="fab fa-linkedin" style="font-size: 30px; color: #0077B5;"></i>
+                        Linkedin : Herhira abdel rahmane
+                    </a>
+                </li>
+
+                <li class="nav-item mx-5">
+                     <h1> <span class="navbar-text text-dark">  📑 étiquettage d'équipements</span> </h1> 
+                </li>
+
+                <li class="nav-item mx-5">
+                    <a class="nav-link" href="https://github.com/herhira-abd/vba_module" target="_blank" >
+                        <i class="fab fa-github" style="font-size: 30px; color: #0077B5;"></i>
+                        Githib rep
+                    </a>
+              
+                </li>
+            </ul>
+            
+               
+
+        </div>    
+
+
+
+          
+    </nav>
+<div class="container mt-5">
+  <h2 class="mb-4"></h2>
+  <div class="row">
+    <div class="mb-5 col-12 ">
+       <span class="fw-bold">Telecharger la version Excel avec Macro ? </span>   <a role="button" class="btn btn-success " href="/herhira_page/files/etiquettage.xlsm">ICI</a>
+    </div>
+   </div>
+   
+   <span class="fw-bold">Ou ...  </span> 
+
+  <div class="mb-3">
+
+   
+    <label class="form-label">Importer fichier Excel :</label>
+    <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls">
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Largeur étiquette (cm)</label>
+      <input type="number" id="largeur" class="form-control" value="5">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Hauteur étiquette (cm)</label>
+      <input type="number" id="hauteur" class="form-control" value="3">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Max colonnes par page</label>
+      <input type="number" id="maxCols" class="form-control" value="3">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Max lignes par page</label>
+      <input type="number" id="maxRows" class="form-control" value="8">
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <button id="generer" class="btn btn-primary">Générer</button>
+    <button id="imprimer" class="btn btn-success">Imprimer en PDF</button>
+  </div>
+
+  <hr class="my-4">
+
+  <div id="etiquettes"></div>
+</div>
+
+<script>
+let dataEquipements = [];
+
+$("#excelFile").on("change", function(e) {
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const workbook = XLSX.read(event.target.result, { type: "binary" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    dataEquipements = rows.slice(1); // Ignorer l’entête
+    alert("Fichier chargé avec " + dataEquipements.length + " équipements");
+  };
+  reader.readAsBinaryString(e.target.files[0]);
+});
+
+$("#generer").on("click", function() {
+    if(dataEquipements.length==0){alert("Veuillez choisir un fichier...");return}
+  const largeur = $("#largeur").val();
+  const hauteur = $("#hauteur").val();
+  const maxCols = parseInt($("#maxCols").val());
+  const maxRows = parseInt($("#maxRows").val());
+
+  const etiquettesDiv = $("#etiquettes");
+  etiquettesDiv.html("");
+
+  let page;
+  dataEquipements.forEach((row, index) => {
+    if (index % (maxCols * maxRows) === 0) {
+      page = $("<div>").addClass("page").css({
+        gridTemplateColumns: `repeat(${maxCols}, ${largeur}cm)`,
+        gridTemplateRows: `repeat(${maxRows}, ${hauteur}cm)`,
+        display:'grid',
+        columnGap: "5mm",   
+        rowGap: "5mm"
+      });
+      etiquettesDiv.append(page);
+    }
+
+    const code = row[0] || "";
+    const designation = row[1] || "";
+
+    const etq = $("<div>").addClass("etiquette").css({
+      width: largeur + "cm",
+      height: hauteur + "cm"
+    });
+
+    // Code-barres
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    JsBarcode(svg, code, {
+      format: "CODE128",
+      displayValue: false,
+      height: 40
+    });
+
+    etq.append(svg);
+    etq.append(`<div><strong>${code}</strong></div>`);
+    etq.append(`<div>${designation}</div>`);
+
+    page.append(etq);
+  });
+});
+
+$("#imprimer").on("click", function() {
+  const printContents = document.getElementById("etiquettes").innerHTML;
+  const w = window.open('', '', 'height=800,width=1000');
+  w.document.write('<html><head><title>Étiquettes</title>');
+  w.document.write('<style>@page { size: A4; margin: 10mm; }; display:grid</style></head><body>');
+  w.document.write(printContents);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.print();
+});
+</script>
+
+</body>
+</html>
